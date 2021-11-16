@@ -123,6 +123,7 @@ def main():
                 payload = json.loads(message["Body"])
 
                 attributes = payload["MessageAttributes"]
+                logger.debug(f"message attributes: {attributes}")
                 event_type = attributes.get("event_name", {}).get(
                     "Value", None
                 ) or attributes.get("type", {}).get("Value", None)
