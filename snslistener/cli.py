@@ -1,10 +1,11 @@
 import argparse
 import json
 import logging
+import sys
 import uuid
-from pygments import formatters, highlight, lexers
 
 import boto3
+from pygments import formatters, highlight, lexers
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -13,17 +14,23 @@ VISIBILITY_TIMEOUT = 60
 WAIT_TIME = 20
 
 
-def pretty_print(d):
+def pretty_print(event_type, d):
     text = json.dumps(d, indent=2, sort_keys=True)
+    if event_type is not None:
+        print(f"== {event_type} ==")
     print(highlight(text, lexers.JsonLexer(), formatters.TerminalFormatter()))
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-t", "--topic", required=True)
-    parser.add_argument("-p", "--prefix", nargs="+")
+    parser.add_argument("-t", "--topic", nargs="*", default=[])
+    parser.add_argument("-p", "--prefix", nargs="+", default=[])
     parser.add_argument("-v", "--verbose", action="count", default=0)
     args = parser.parse_args()
+
+    if len(args.topic) > 1 and len(args.prefix) > 1:
+        print("Multiple topics and prefixes not supported", file=sys.stderr)
+        sys.exit(1)
 
     logger = logging.getLogger("snslistener")
     if args.verbose == 1:
@@ -44,6 +51,7 @@ def main():
             "VisibilityTimeout": str(VISIBILITY_TIMEOUT),
         },
     )
+
     subscription_arn = None
     queue_url = None
     try:
@@ -54,48 +62,49 @@ def main():
         queue_arn = queue_attributes["Attributes"]["QueueArn"]
         logger.debug(f"queue arn: {queue_arn}")
 
+        policy = json.dumps(
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Sid": "PIXMsgListenerWriteToQueue",
+                        "Effect": "Allow",
+                        "Principal": {"AWS": "*"},
+                        "Action": "SQS:SendMessage",
+                        "Resource": queue_arn,
+                        "Condition": {"ArnEquals": {"aws:SourceArn": topic_arn}},
+                    }
+                    for topic_arn in args.topic
+                ],
+            }
+        )
+
         # give SNS permissions to write to the queue
         sqs_client.set_queue_attributes(
             QueueUrl=queue_url,
-            Attributes={
-                "Policy": json.dumps(
-                    {
-                        "Version": "2012-10-17",
-                        "Statement": [
-                            {
-                                "Sid": "PIXMsgListenerWriteToQueue",
-                                "Effect": "Allow",
-                                "Principal": {"AWS": "*"},
-                                "Action": "SQS:SendMessage",
-                                "Resource": queue_arn,
-                                "Condition": {
-                                    "ArnEquals": {"aws:SourceArn": args.topic}
-                                },
-                            }
-                        ],
-                    }
-                )
-            },
+            Attributes={"Policy": policy},
         )
 
-        logger.info("creating subscription")
-        res = sns_client.subscribe(
-            TopicArn=args.topic,
-            Protocol="sqs",
-            Endpoint=queue_arn,
-            ReturnSubscriptionArn=True,
-        )
-        subscription_arn = res["SubscriptionArn"]
-
-        if args.prefix and subscription_arn is not None:
-            logger.debug(f"setting filter prefix to include {args.prefix}")
-            sns_client.set_subscription_attributes(
-                SubscriptionArn=subscription_arn,
-                AttributeName="FilterPolicy",
-                AttributeValue=json.dumps(
-                    {"event_name": [{"prefix": prefix} for prefix in args.prefix]}
-                ),
+        logger.info("creating subscriptions")
+        for topic in args.topic:
+            logger.debug(f"subscribing to {topic}")
+            res = sns_client.subscribe(
+                TopicArn=topic,
+                Protocol="sqs",
+                Endpoint=queue_arn,
+                ReturnSubscriptionArn=True,
             )
+            subscription_arn = res["SubscriptionArn"]
+
+            if args.prefix and subscription_arn is not None:
+                logger.debug(f"setting filter prefix to include {args.prefix}")
+                sns_client.set_subscription_attributes(
+                    SubscriptionArn=subscription_arn,
+                    AttributeName="FilterPolicy",
+                    AttributeValue=json.dumps(
+                        {"event_name": [{"prefix": prefix} for prefix in args.prefix]}
+                    ),
+                )
 
         print("Listening for messages...")
         while True:
@@ -112,8 +121,14 @@ def main():
             messages = get_messages_response.get("Messages", [])
             for message in messages:
                 payload = json.loads(message["Body"])
+
+                attributes = payload["MessageAttributes"]
+                event_type = attributes.get("event_name", {}).get(
+                    "Value", None
+                ) or attributes.get("type", {}).get("Value", None)
+
                 content = json.loads(payload["Message"])
-                pretty_print(content)
+                pretty_print(event_type, content)
 
     finally:
         if subscription_arn is not None:
