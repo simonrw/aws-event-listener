@@ -122,11 +122,14 @@ def main():
             for message in messages:
                 payload = json.loads(message["Body"])
 
-                attributes = payload["MessageAttributes"]
+                attributes = payload.get("MessageAttributes", {})
                 logger.debug(f"message attributes: {attributes}")
-                event_type = attributes.get("event_name", {}).get(
-                    "Value", None
-                ) or attributes.get("type", {}).get("Value", None)
+
+                event_type = (
+                    attributes.get("event_name", {}).get("Value", None)
+                    or attributes.get("type", {}).get("Value", None)
+                    or "unknown event type"
+                )
 
                 content = json.loads(payload["Message"])
                 pretty_print(event_type, content)
