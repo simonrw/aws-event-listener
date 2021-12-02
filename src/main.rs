@@ -68,20 +68,41 @@ async fn gen_messages(
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
+struct Attribute {
+    #[serde(rename = "Type")]
+    attribute_type: String,
+    #[serde(rename = "Value")]
+    value: String,
+}
+
+#[derive(Deserialize, Debug)]
 struct Payload {
     #[serde(rename = "Message")]
     message: String,
+    #[serde(rename = "MessageAttributes")]
+    attributes: Option<HashMap<String, Attribute>>,
 }
 
 fn print_message(message: aws_sdk_sqs::model::Message) -> Result<()> {
     if let Some(body) = message.body {
         let payload: Payload = serde_json::from_str(&body).wrap_err("decoding JSON message")?;
+        let attributes = payload.attributes.unwrap_or_else(HashMap::new);
+        tracing::trace!(?attributes, "found message attributes");
+
         let data: serde_json::Value =
             serde_json::from_str(&payload.message).wrap_err("decoding JSON data")?;
 
+        if let Some(event_type) = attributes
+            .get("type")
+            .map(|attr| attr.value.clone())
+            .or_else(|| attributes.get("event_name").map(|attr| attr.value.clone()))
+        {
+            println!("== {} ==", event_type);
+        }
+
         // unwrap is safe because the object was JSON to start with
-        println!("{}", colored_json::to_colored_json_auto(&data).unwrap());
+        println!("{}\n", colored_json::to_colored_json_auto(&data).unwrap());
     }
     Ok(())
 }
@@ -196,6 +217,7 @@ async fn main() -> Result<()> {
                 })
                 .wrap_err("setting ctrl-c handler")?;
 
+                println!("Listening for messages...");
                 loop {
                     tokio::select! {
                         message = messages_rx.recv() => {
