@@ -7,7 +7,7 @@ use tokio::sync::mpsc;
 
 const MAX_NUMBER_OF_MESSAGES: &str = "10";
 const VISIBILITY_TIMEOUT: &str = "60";
-const WAIT_TIME: &str = "5";
+const WAIT_TIME: &str = "20";
 
 #[derive(StructOpt)]
 struct Opts {
@@ -81,7 +81,7 @@ fn print_message(message: aws_sdk_sqs::model::Message) -> Result<()> {
             serde_json::from_str(&payload.message).wrap_err("decoding JSON data")?;
 
         // unwrap is safe because the object was JSON to start with
-        println!("{}", serde_json::to_string_pretty(&data).unwrap());
+        println!("{}", colored_json::to_colored_json_auto(&data).unwrap());
     }
     Ok(())
 }
@@ -200,7 +200,9 @@ async fn main() -> Result<()> {
                     tokio::select! {
                         message = messages_rx.recv() => {
                             if let Some(message) = message {
-                                print_message(message).wrap_err("printing message")?;
+                                if let Err(e) = print_message(message) {
+                                    tracing::warn!(error = ?e, "error printing message");
+                                }
                             }
                         }
                         _ = ctrlc_rx.recv() => {
