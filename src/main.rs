@@ -2,6 +2,7 @@ use eyre::{Result, WrapErr};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::future::Future;
+use std::time::Duration;
 use structopt::StructOpt;
 use tokio::sync::mpsc;
 
@@ -46,7 +47,7 @@ async fn gen_messages(
     // poll for messages
     loop {
         tracing::trace!("poll loop");
-        let messages_response = sqs_client
+        match sqs_client
             .receive_message()
             .queue_url(queue_url)
             .attribute_names("SentTimestamp")
@@ -57,13 +58,19 @@ async fn gen_messages(
             .wait_time_seconds(WAIT_TIME.parse().unwrap())
             .send()
             .await
-            .wrap_err("receiving messages")?;
-        tracing::trace!("got messages");
-
-        let messages = messages_response.messages.unwrap_or_else(Vec::new);
-        tracing::debug!(num_messages = %messages.len(), "found messages");
-        for message in messages {
-            let _ = tx.send(message).await;
+        {
+            Ok(messages_response) => {
+                tracing::trace!("got messages");
+                let messages = messages_response.messages.unwrap_or_else(Vec::new);
+                tracing::debug!(num_messages = %messages.len(), "found messages");
+                for message in messages {
+                    let _ = tx.send(message).await;
+                }
+            }
+            Err(e) => {
+                tracing::warn!("got receive message error: {:?}", e);
+                tokio::time::sleep(Duration::from_secs(10)).await;
+            }
         }
     }
 }
