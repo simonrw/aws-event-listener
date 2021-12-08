@@ -16,7 +16,7 @@ struct Opts {
     topic: String,
 
     #[structopt(short, long)]
-    prefix: Option<String>,
+    prefix: Option<Vec<String>>,
 }
 
 async fn with_cleanup_queue<T, F>(
@@ -189,16 +189,17 @@ async fn main() -> Result<()> {
                     .send()
                     .await
                     .wrap_err("subscribing to topic")?;
-                if let Some(prefix) = opts.prefix {
+                if let Some(prefixes) = opts.prefix {
                     match subscribe_res.subscription_arn {
                         Some(subscription_arn) => {
-                            tracing::debug!("setting filter parameters");
+                            tracing::debug!(?prefixes, %subscription_arn, "setting filter parameters");
 
-                            let filter_policy = serde_json::json!({
-                                "event_name": [
-                                    {"prefix": prefix}
-                                ]
-                            });
+                            let policy_prefixes: Vec<_> = prefixes
+                                .into_iter()
+                                .map(|p| serde_json::json!({ "prefix": p }))
+                                .collect();
+                            let filter_policy =
+                                serde_json::json!({ "event_name": policy_prefixes });
                             sns_client
                                 .set_subscription_attributes()
                                 .subscription_arn(subscription_arn)
