@@ -109,6 +109,7 @@ fn main() -> Result<()> {
     let config = runtime.block_on(aws_config::load_from_env());
     let sqs_client = aws_sdk_sqs::Client::new(&config);
     let sns_client = aws_sdk_sns::Client::new(&config);
+    let iam_client = aws_sdk_iam::Client::new(&config);
 
     match opts {
         Opts::Sns { topic, prefix } => {
