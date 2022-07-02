@@ -3,65 +3,23 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::time::Duration;
 use structopt::StructOpt;
-use tokio::runtime::Handle;
 use tokio::sync::mpsc;
 
-const MAX_NUMBER_OF_MESSAGES: &str = "10";
-const VISIBILITY_TIMEOUT: &str = "60";
-const WAIT_TIME: &str = "20";
+mod constants;
+mod resources;
+
+use constants::*;
+use resources::Queue;
 
 #[derive(StructOpt)]
-struct Opts {
-    #[structopt(short, long)]
-    topic: String,
+enum Opts {
+    Sns {
+        #[structopt(short, long)]
+        topic: String,
 
-    #[structopt(short, long)]
-    prefix: Option<Vec<String>>,
-}
-
-struct Queue<'h> {
-    client: aws_sdk_sqs::Client,
-    handle: &'h Handle,
-    queue_url: Option<String>,
-}
-
-impl<'h> Queue<'h> {
-    fn new(name: impl AsRef<str>, client: aws_sdk_sqs::Client, handle: &'h Handle) -> Result<Self> {
-        let name = name.as_ref();
-        let queue_info = handle
-            .block_on(async {
-                client
-                    .create_queue()
-                    .queue_name(name)
-                    .attributes("MessageRetentionPeriod", VISIBILITY_TIMEOUT)
-                    .attributes("ReceiveMessageWaitTimeSeconds", WAIT_TIME)
-                    .attributes("VisibilityTimeout", VISIBILITY_TIMEOUT)
-                    .send()
-                    .await
-            })
-            .wrap_err("creating queue")?;
-        let queue_url = Some(queue_info.queue_url).expect("no queue url specified");
-
-        Ok(Self {
-            client,
-            handle,
-            queue_url,
-        })
-    }
-}
-
-impl<'h> Drop for Queue<'h> {
-    fn drop(&mut self) {
-        if let Some(queue_url) = self.queue_url.take() {
-            let _ = self.handle.block_on(async {
-                if let Err(e) = self.client.delete_queue().queue_url(queue_url).send().await {
-                    eyre::bail!("could not clean up temporary queue: {:?}", e);
-                }
-
-                Ok(())
-            });
-        }
-    }
+        #[structopt(short, long)]
+        prefix: Option<Vec<String>>,
+    },
 }
 
 async fn gen_messages(
@@ -152,122 +110,126 @@ fn main() -> Result<()> {
     let sqs_client = aws_sdk_sqs::Client::new(&config);
     let sns_client = aws_sdk_sns::Client::new(&config);
 
-    let queue_name = format!("snslistener-{}", uuid::Uuid::new_v4());
-    tracing::info!(%queue_name, "creating queue");
+    match opts {
+        Opts::Sns { topic, prefix } => {
+            let queue_name = format!("snslistener-{}", uuid::Uuid::new_v4());
+            tracing::info!(%queue_name, "creating queue");
 
-    let queue = Queue::new(&queue_name, sqs_client.clone(), runtime.handle())?;
-    let queue_url = queue.queue_url.clone().unwrap();
-    tracing::info!("worker closure");
+            let queue = Queue::new(&queue_name, sqs_client.clone(), runtime.handle())?;
+            let queue_url = queue.queue_url.clone().unwrap();
+            tracing::info!("worker closure");
 
-    let queue_attributes = runtime
-        .block_on(async {
-            sqs_client
-                .get_queue_attributes()
-                .queue_url(&queue_url)
-                .attribute_names("QueueArn")
-                .send()
-                .await
-        })
-        .wrap_err("getting queue attributes")?;
+            let queue_attributes = runtime
+                .block_on(async {
+                    sqs_client
+                        .get_queue_attributes()
+                        .queue_url(&queue_url)
+                        .attribute_names("QueueArn")
+                        .send()
+                        .await
+                })
+                .wrap_err("getting queue attributes")?;
 
-    let attributes = queue_attributes.attributes.unwrap_or_default();
-    let queue_arn = &attributes[&aws_sdk_sqs::model::QueueAttributeName::QueueArn];
-    tracing::debug!(%queue_arn, "found queue arn");
+            let attributes = queue_attributes.attributes.unwrap_or_default();
+            let queue_arn = &attributes[&aws_sdk_sqs::model::QueueAttributeName::QueueArn];
+            tracing::debug!(%queue_arn, "found queue arn");
 
-    let policy = serde_json::json!({
-        "Version": "2012-10-17",
-        "Statement": [{
-            "Sid": "SNSSubscriberWriteToQueue",
-            "Effect": "Allow",
-            "Principal": {"AWS": "*"},
-            "Action": "SQS:SendMessage",
-            "Resource": queue_arn,
-            "Condition": {"ArnEquals": {"aws:SourceArn": opts.topic}},
-        }],
-    });
-    let policy_text = policy.to_string();
-    tracing::debug!(policy = %policy_text, "generated policy");
+            let policy = serde_json::json!({
+                "Version": "2012-10-17",
+                "Statement": [{
+                    "Sid": "SNSSubscriberWriteToQueue",
+                    "Effect": "Allow",
+                    "Principal": {"AWS": "*"},
+                    "Action": "SQS:SendMessage",
+                    "Resource": queue_arn,
+                    "Condition": {"ArnEquals": {"aws:SourceArn": topic}},
+                }],
+            });
+            let policy_text = policy.to_string();
+            tracing::debug!(policy = %policy_text, "generated policy");
 
-    runtime
-        .block_on(async {
-            sqs_client
-                .set_queue_attributes()
-                .queue_url(&queue_url)
-                .attributes("Policy", policy_text)
-                .send()
-                .await
-        })
-        .wrap_err("setting queue attributes")?;
+            runtime
+                .block_on(async {
+                    sqs_client
+                        .set_queue_attributes()
+                        .queue_url(&queue_url)
+                        .attributes("Policy", policy_text)
+                        .send()
+                        .await
+                })
+                .wrap_err("setting queue attributes")?;
 
-    tracing::info!("subscribing queue to topic");
-    let subscribe_res = runtime
-        .block_on(async {
-            sns_client
-                .subscribe()
-                .topic_arn(&opts.topic)
-                .protocol("sqs")
-                .endpoint(queue_arn)
-                .return_subscription_arn(true)
-                .send()
-                .await
-        })
-        .wrap_err("subscribing to topic")?;
-    if let Some(prefixes) = opts.prefix {
-        match subscribe_res.subscription_arn {
-            Some(subscription_arn) => {
-                tracing::debug!(?prefixes, %subscription_arn, "setting filter parameters");
+            tracing::info!("subscribing queue to topic");
+            let subscribe_res = runtime
+                .block_on(async {
+                    sns_client
+                        .subscribe()
+                        .topic_arn(&topic)
+                        .protocol("sqs")
+                        .endpoint(queue_arn)
+                        .return_subscription_arn(true)
+                        .send()
+                        .await
+                })
+                .wrap_err("subscribing to topic")?;
+            if let Some(prefixes) = prefix {
+                match subscribe_res.subscription_arn {
+                    Some(subscription_arn) => {
+                        tracing::debug!(?prefixes, %subscription_arn, "setting filter parameters");
 
-                let policy_prefixes: Vec<_> = prefixes
-                    .into_iter()
-                    .map(|p| serde_json::json!({ "prefix": p }))
-                    .collect();
-                let filter_policy = serde_json::json!({ "event_name": policy_prefixes });
-                runtime
-                    .block_on(async {
-                        sns_client
-                            .set_subscription_attributes()
-                            .subscription_arn(subscription_arn)
-                            .attribute_name("FilterPolicy")
-                            .attribute_value(filter_policy.to_string())
-                            .send()
-                            .await
-                    })
-                    .wrap_err("setting subscription attributes")?;
+                        let policy_prefixes: Vec<_> = prefixes
+                            .into_iter()
+                            .map(|p| serde_json::json!({ "prefix": p }))
+                            .collect();
+                        let filter_policy = serde_json::json!({ "event_name": policy_prefixes });
+                        runtime
+                            .block_on(async {
+                                sns_client
+                                    .set_subscription_attributes()
+                                    .subscription_arn(subscription_arn)
+                                    .attribute_name("FilterPolicy")
+                                    .attribute_value(filter_policy.to_string())
+                                    .send()
+                                    .await
+                            })
+                            .wrap_err("setting subscription attributes")?;
+                    }
+                    None => eyre::bail!("did not receive subscription arn"),
+                }
             }
-            None => eyre::bail!("did not receive subscription arn"),
-        }
-    }
 
-    let (tx, mut messages_rx) = mpsc::channel(16);
-    let message_subscriber = runtime.spawn(async move {
-        tracing::trace!("spawned background task");
-        gen_messages(&sqs_client, &queue_url, tx).await.unwrap();
-    });
+            let (tx, mut messages_rx) = mpsc::channel(16);
+            let message_subscriber = runtime.spawn(async move {
+                tracing::trace!("spawned background task");
+                gen_messages(&sqs_client, &queue_url, tx).await.unwrap();
+            });
 
-    let (tx, mut ctrlc_rx) = mpsc::channel(1);
-    ctrlc::set_handler(move || {
-        let _ = tx.blocking_send(());
-    })
-    .wrap_err("setting ctrl-c handler")?;
+            let (tx, mut ctrlc_rx) = mpsc::channel(1);
+            ctrlc::set_handler(move || {
+                let _ = tx.blocking_send(());
+            })
+            .wrap_err("setting ctrl-c handler")?;
 
-    println!("Listening for messages...");
-    runtime.block_on(async {
-        loop {
-            tokio::select! {
-                message = messages_rx.recv() => {
-                    if let Some(message) = message {
-                        if let Err(e) = print_message(message) {
-                            tracing::warn!(error = ?e, "error printing message");
+            println!("Listening for messages...");
+            runtime.block_on(async {
+                loop {
+                    tokio::select! {
+                        message = messages_rx.recv() => {
+                            if let Some(message) = message {
+                                if let Err(e) = print_message(message) {
+                                    tracing::warn!(error = ?e, "error printing message");
+                                }
+                            }
+                        }
+                        _ = ctrlc_rx.recv() => {
+                            message_subscriber.abort();
+                            break
                         }
                     }
                 }
-                _ = ctrlc_rx.recv() => {
-                    message_subscriber.abort();
-                    break
-                }
-            }
-        }
-    });
+            });
 
-    Ok(())
+            Ok(())
+        }
+    }
 }
