@@ -77,9 +77,9 @@ impl<'h> Queue<'h> {
                 client
                     .create_queue()
                     .queue_name(name)
-                    .attributes("MessageRetentionPeriod", VISIBILITY_TIMEOUT)
-                    .attributes("ReceiveMessageWaitTimeSeconds", WAIT_TIME)
-                    .attributes("VisibilityTimeout", VISIBILITY_TIMEOUT)
+                    .attributes("MessageRetentionPeriod".into(), VISIBILITY_TIMEOUT)
+                    .attributes("ReceiveMessageWaitTimeSeconds".into(), WAIT_TIME)
+                    .attributes("VisibilityTimeout".into(), VISIBILITY_TIMEOUT)
                     .send()
                     .await
             })

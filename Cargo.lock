@@ -54,38 +54,29 @@ checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
 
 [[package]]
 name = "aws-config"
-version = "0.0.26-alpha"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f072f0d08f62093e2a38603307e368bf90d5acd3e3b54b60292cba4698bba38b"
+checksum = "1a8c0628604c0a0afcd417548f085fd52e4ad54cacbf96437db4f45a27a47636"
 dependencies = [
- "aws-http 0.0.26-alpha",
- "aws-hyper",
+ "aws-http",
+ "aws-sdk-sso",
  "aws-sdk-sts",
- "aws-smithy-async 0.30.0-alpha",
- "aws-smithy-client 0.30.0-alpha",
- "aws-smithy-http 0.30.0-alpha",
- "aws-smithy-http-tower 0.30.0-alpha",
- "aws-smithy-json 0.30.0-alpha",
- "aws-smithy-types 0.30.0-alpha",
- "aws-types 0.0.26-alpha",
+ "aws-smithy-async",
+ "aws-smithy-client",
+ "aws-smithy-http",
+ "aws-smithy-http-tower",
+ "aws-smithy-json",
+ "aws-smithy-types",
+ "aws-types",
  "bytes",
+ "hex",
  "http",
+ "hyper",
+ "ring",
  "tokio",
  "tower",
  "tracing",
-]
-
-[[package]]
-name = "aws-endpoint"
-version = "0.0.26-alpha"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4b4d939891f640c013bbae11180e767470d75c9d61b48d85008fbd19a46e6a46"
-dependencies = [
- "aws-smithy-http 0.30.0-alpha",
- "aws-types 0.0.26-alpha",
- "http",
- "regex",
- "tracing",
+ "zeroize",
 ]
 
 [[package]]
@@ -94,24 +85,10 @@ version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8bae67aca7c551d061a06606ad445d717ee28ac08f70d0f2358096c70118bdfe"
 dependencies = [
- "aws-smithy-http 0.45.0",
- "aws-types 0.15.0",
+ "aws-smithy-http",
+ "aws-types",
  "http",
  "regex",
- "tracing",
-]
-
-[[package]]
-name = "aws-http"
-version = "0.0.26-alpha"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f685b9441c4e99d478b4e70cd0993ed178029534c296143ae9d37f2a424dde82"
-dependencies = [
- "aws-smithy-http 0.30.0-alpha",
- "aws-smithy-types 0.30.0-alpha",
- "aws-types 0.0.26-alpha",
- "http",
- "lazy_static",
  "tracing",
 ]
 
@@ -121,37 +98,12 @@ version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2145230145123a3308c09a9f8aac2e2213c5540dd0e3a77200c32b20575cbcb"
 dependencies = [
- "aws-smithy-http 0.45.0",
- "aws-smithy-types 0.45.0",
- "aws-types 0.15.0",
+ "aws-smithy-http",
+ "aws-smithy-types",
+ "aws-types",
  "http",
  "lazy_static",
  "percent-encoding",
- "tracing",
-]
-
-[[package]]
-name = "aws-hyper"
-version = "0.0.26-alpha"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b5f0a1a3500ec4b07ba95b56df754dd1a3b0555b1f27f71592bbfa3ee4a8e2a7"
-dependencies = [
- "aws-endpoint 0.0.26-alpha",
- "aws-http 0.0.26-alpha",
- "aws-sig-auth 0.0.26-alpha",
- "aws-smithy-client 0.30.0-alpha",
- "aws-smithy-http 0.30.0-alpha",
- "aws-smithy-http-tower 0.30.0-alpha",
- "aws-smithy-types 0.30.0-alpha",
- "bytes",
- "fastrand",
- "http",
- "http-body",
- "hyper",
- "hyper-rustls",
- "pin-project",
- "tokio",
- "tower",
  "tracing",
 ]
 
@@ -161,16 +113,16 @@ version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8e5ceb8ff20e18bb33cb16b83948bd2e581f2dd1ccbec148b2086ad5daf6c0f9"
 dependencies = [
- "aws-endpoint 0.15.0",
- "aws-http 0.15.0",
- "aws-sig-auth 0.15.0",
- "aws-smithy-async 0.45.0",
- "aws-smithy-client 0.45.0",
- "aws-smithy-http 0.45.0",
- "aws-smithy-http-tower 0.45.0",
- "aws-smithy-json 0.45.0",
- "aws-smithy-types 0.45.0",
- "aws-types 0.15.0",
+ "aws-endpoint",
+ "aws-http",
+ "aws-sig-auth",
+ "aws-smithy-async",
+ "aws-smithy-client",
+ "aws-smithy-http",
+ "aws-smithy-http-tower",
+ "aws-smithy-json",
+ "aws-smithy-types",
+ "aws-types",
  "bytes",
  "http",
  "tower",
@@ -182,17 +134,17 @@ version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fde4db12b81bbcbba7a1d55ae0f8a30c4628413829851791658d4adf7f060897"
 dependencies = [
- "aws-endpoint 0.15.0",
- "aws-http 0.15.0",
- "aws-sig-auth 0.15.0",
- "aws-smithy-async 0.45.0",
- "aws-smithy-client 0.45.0",
- "aws-smithy-http 0.45.0",
- "aws-smithy-http-tower 0.45.0",
- "aws-smithy-query 0.45.0",
- "aws-smithy-types 0.45.0",
- "aws-smithy-xml 0.45.0",
- "aws-types 0.15.0",
+ "aws-endpoint",
+ "aws-http",
+ "aws-sig-auth",
+ "aws-smithy-async",
+ "aws-smithy-client",
+ "aws-smithy-http",
+ "aws-smithy-http-tower",
+ "aws-smithy-query",
+ "aws-smithy-types",
+ "aws-smithy-xml",
+ "aws-types",
  "bytes",
  "http",
  "tokio-stream",
@@ -201,79 +153,92 @@ dependencies = [
 
 [[package]]
 name = "aws-sdk-sns"
-version = "0.0.26-alpha"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08cf6e8da3679095c082125ceb664b2db008d9f0de4d28249992ebc77b34319b"
+checksum = "5596fb4e4db0d71ba12fb4f89e33054719a094e0c0d9a64f5d9e7c991122e742"
 dependencies = [
- "aws-endpoint 0.0.26-alpha",
- "aws-http 0.0.26-alpha",
- "aws-hyper",
- "aws-sig-auth 0.0.26-alpha",
- "aws-smithy-async 0.30.0-alpha",
- "aws-smithy-client 0.30.0-alpha",
- "aws-smithy-http 0.30.0-alpha",
- "aws-smithy-query 0.30.0-alpha",
- "aws-smithy-types 0.30.0-alpha",
- "aws-smithy-xml 0.30.0-alpha",
- "aws-types 0.0.26-alpha",
+ "aws-endpoint",
+ "aws-http",
+ "aws-sig-auth",
+ "aws-smithy-async",
+ "aws-smithy-client",
+ "aws-smithy-http",
+ "aws-smithy-http-tower",
+ "aws-smithy-query",
+ "aws-smithy-types",
+ "aws-smithy-xml",
+ "aws-types",
  "bytes",
  "http",
+ "tokio-stream",
+ "tower",
 ]
 
 [[package]]
 name = "aws-sdk-sqs"
-version = "0.0.26-alpha"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bbaa3e0160a9420803e0ae559aaef81dbf2c529ca89565a36e31b236b8d1e6bc"
+checksum = "5e794d463da9c06e29c689bc8ce5d1de4f7a3ca7185f21b8d291573d055fcd8c"
 dependencies = [
- "aws-endpoint 0.0.26-alpha",
- "aws-http 0.0.26-alpha",
- "aws-hyper",
- "aws-sig-auth 0.0.26-alpha",
- "aws-smithy-async 0.30.0-alpha",
- "aws-smithy-client 0.30.0-alpha",
- "aws-smithy-http 0.30.0-alpha",
- "aws-smithy-query 0.30.0-alpha",
- "aws-smithy-types 0.30.0-alpha",
- "aws-smithy-xml 0.30.0-alpha",
- "aws-types 0.0.26-alpha",
+ "aws-endpoint",
+ "aws-http",
+ "aws-sig-auth",
+ "aws-smithy-async",
+ "aws-smithy-client",
+ "aws-smithy-http",
+ "aws-smithy-http-tower",
+ "aws-smithy-query",
+ "aws-smithy-types",
+ "aws-smithy-xml",
+ "aws-types",
  "bytes",
  "http",
+ "tokio-stream",
+ "tower",
+]
+
+[[package]]
+name = "aws-sdk-sso"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0d3df9fc9d07b0d1dc897a5e9aee924fd8527ff3d8a15677ca4dbb14969aacf0"
+dependencies = [
+ "aws-endpoint",
+ "aws-http",
+ "aws-sig-auth",
+ "aws-smithy-async",
+ "aws-smithy-client",
+ "aws-smithy-http",
+ "aws-smithy-http-tower",
+ "aws-smithy-json",
+ "aws-smithy-types",
+ "aws-types",
+ "bytes",
+ "http",
+ "tokio-stream",
+ "tower",
 ]
 
 [[package]]
 name = "aws-sdk-sts"
-version = "0.0.26-alpha"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b8858771f3809ff70b1c9ebc464b86bf2d7c6ce50a0c2f153484abe45ca76f9"
+checksum = "479f057a876f04ae8594d6f6633572ce7946fda5f1ae420cdfde653d61841bbe"
 dependencies = [
- "aws-endpoint 0.0.26-alpha",
- "aws-http 0.0.26-alpha",
- "aws-hyper",
- "aws-sig-auth 0.0.26-alpha",
- "aws-smithy-async 0.30.0-alpha",
- "aws-smithy-client 0.30.0-alpha",
- "aws-smithy-http 0.30.0-alpha",
- "aws-smithy-query 0.30.0-alpha",
- "aws-smithy-types 0.30.0-alpha",
- "aws-smithy-xml 0.30.0-alpha",
- "aws-types 0.0.26-alpha",
+ "aws-endpoint",
+ "aws-http",
+ "aws-sig-auth",
+ "aws-smithy-async",
+ "aws-smithy-client",
+ "aws-smithy-http",
+ "aws-smithy-http-tower",
+ "aws-smithy-query",
+ "aws-smithy-types",
+ "aws-smithy-xml",
+ "aws-types",
  "bytes",
  "http",
-]
-
-[[package]]
-name = "aws-sig-auth"
-version = "0.0.26-alpha"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "469d7527fc24e3edc32e5edf1b046d7d7c778ed6c4f9c51f869725bb01c101db"
-dependencies = [
- "aws-sigv4 0.0.26-alpha",
- "aws-smithy-http 0.30.0-alpha",
- "aws-types 0.0.26-alpha",
- "http",
- "thiserror",
- "tracing",
+ "tower",
 ]
 
 [[package]]
@@ -282,27 +247,10 @@ version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ffea94eb16f7f14153d4ff086aa075e0725050ee89ac6c1538cc1b229c64b420"
 dependencies = [
- "aws-sigv4 0.15.0",
- "aws-smithy-http 0.45.0",
- "aws-types 0.15.0",
+ "aws-sigv4",
+ "aws-smithy-http",
+ "aws-types",
  "http",
- "tracing",
-]
-
-[[package]]
-name = "aws-sigv4"
-version = "0.0.26-alpha"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb7d4888513285ec13c9b02c9bf8a3cf264251fc4c51270ca35239e39b18cb57"
-dependencies = [
- "form_urlencoded",
- "hex",
- "http",
- "once_cell",
- "percent-encoding",
- "regex",
- "ring",
- "time",
  "tracing",
 ]
 
@@ -312,7 +260,7 @@ version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "543ad4870152e9850fcbbaec1e1c746c4905682053866848af99681227198cab"
 dependencies = [
- "aws-smithy-http 0.45.0",
+ "aws-smithy-http",
  "form_urlencoded",
  "hex",
  "http",
@@ -322,16 +270,6 @@ dependencies = [
  "ring",
  "time",
  "tracing",
-]
-
-[[package]]
-name = "aws-smithy-async"
-version = "0.30.0-alpha"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34b323275f9a5118ce0c61c1f509d89d97008f4d6e376826bc744b43b553bf33"
-dependencies = [
- "pin-project-lite",
- "tokio",
 ]
 
 [[package]]
@@ -348,38 +286,14 @@ dependencies = [
 
 [[package]]
 name = "aws-smithy-client"
-version = "0.30.0-alpha"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eda35ddfd69ad9623dbb66aeaac1b85bc03974fdb4054fcd05cdb4ce1a78bf12"
-dependencies = [
- "aws-smithy-async 0.30.0-alpha",
- "aws-smithy-http 0.30.0-alpha",
- "aws-smithy-http-tower 0.30.0-alpha",
- "aws-smithy-types 0.30.0-alpha",
- "bytes",
- "fastrand",
- "http",
- "http-body",
- "hyper",
- "hyper-rustls",
- "lazy_static",
- "pin-project",
- "pin-project-lite",
- "tokio",
- "tower",
- "tracing",
-]
-
-[[package]]
-name = "aws-smithy-client"
 version = "0.45.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c7a1f41d103bc313190a2af4bb8ff67311ae2e673e3701202fe707fc9597da4c"
 dependencies = [
- "aws-smithy-async 0.45.0",
- "aws-smithy-http 0.45.0",
- "aws-smithy-http-tower 0.45.0",
- "aws-smithy-types 0.45.0",
+ "aws-smithy-async",
+ "aws-smithy-http",
+ "aws-smithy-http-tower",
+ "aws-smithy-types",
  "bytes",
  "fastrand",
  "http",
@@ -390,26 +304,6 @@ dependencies = [
  "pin-project-lite",
  "tokio",
  "tower",
- "tracing",
-]
-
-[[package]]
-name = "aws-smithy-http"
-version = "0.30.0-alpha"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c8068bb0c3d2f512ec2ff6c4e74e639266f89bb4bd492f747c4290fe41d17a6e"
-dependencies = [
- "aws-smithy-types 0.30.0-alpha",
- "bytes",
- "bytes-utils",
- "futures-core",
- "http",
- "http-body",
- "hyper",
- "percent-encoding",
- "pin-project",
- "tokio",
- "tokio-util 0.6.9",
  "tracing",
 ]
 
@@ -419,7 +313,7 @@ version = "0.45.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "17bf583ba80ee4ef0fbae4fd1bce07567a03411ac2f82f80d2cfb41ea263c172"
 dependencies = [
- "aws-smithy-types 0.45.0",
+ "aws-smithy-types",
  "bytes",
  "bytes-utils",
  "futures-core",
@@ -436,26 +330,11 @@ dependencies = [
 
 [[package]]
 name = "aws-smithy-http-tower"
-version = "0.30.0-alpha"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7beb34a340675391abe55d5ab2619ef2b1c85995126ba1706ba2657ccd602be3"
-dependencies = [
- "aws-smithy-http 0.30.0-alpha",
- "bytes",
- "http",
- "http-body",
- "pin-project",
- "tower",
- "tracing",
-]
-
-[[package]]
-name = "aws-smithy-http-tower"
 version = "0.45.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d8845020b3875bcaf61c4174430975a07dc9ca9653f1029fcbbf61d197cbe593"
 dependencies = [
- "aws-smithy-http 0.45.0",
+ "aws-smithy-http",
  "bytes",
  "http",
  "http-body",
@@ -466,30 +345,11 @@ dependencies = [
 
 [[package]]
 name = "aws-smithy-json"
-version = "0.30.0-alpha"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "721176eec47b71d3226d61ccaa40cebe83ddc644c8981c7c3b34547a62808eb3"
-dependencies = [
- "aws-smithy-types 0.30.0-alpha",
-]
-
-[[package]]
-name = "aws-smithy-json"
 version = "0.45.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "748702917f9c54f8300710cb7284152fdba6881741654880bfd5c11ecf230425"
 dependencies = [
- "aws-smithy-types 0.45.0",
-]
-
-[[package]]
-name = "aws-smithy-query"
-version = "0.30.0-alpha"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef0c0dc09c61921a2104e1487810bd32274d8b57dd00d878895ebc51e2068d85"
-dependencies = [
- "aws-smithy-types 0.30.0-alpha",
- "urlencoding 1.3.3",
+ "aws-smithy-types",
 ]
 
 [[package]]
@@ -498,20 +358,8 @@ version = "0.45.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4ca90dfe7151841de25e9e0d1862605aec4fe63fbfdf81417d3dc4baef562350"
 dependencies = [
- "aws-smithy-types 0.45.0",
- "urlencoding 2.1.0",
-]
-
-[[package]]
-name = "aws-smithy-types"
-version = "0.30.0-alpha"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a422c3740103fe67102ecbedffe8318dd6a03a209f7e097d1e00a1f3f4d186ac"
-dependencies = [
- "itoa 0.4.8",
- "num-integer",
- "ryu",
- "time",
+ "aws-smithy-types",
+ "urlencoding",
 ]
 
 [[package]]
@@ -528,16 +376,6 @@ dependencies = [
 
 [[package]]
 name = "aws-smithy-xml"
-version = "0.30.0-alpha"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5c884d1dc27ccf45763d42b9f58425493b6cd563a95922f92b87a5d92c4060d4"
-dependencies = [
- "thiserror",
- "xmlparser",
-]
-
-[[package]]
-name = "aws-smithy-xml"
 version = "0.45.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f4bff2d07dd531709cd1e9153c15a859ca394c9d6b2bb8e91d16960ea1fc8ae6"
@@ -547,27 +385,14 @@ dependencies = [
 
 [[package]]
 name = "aws-types"
-version = "0.0.26-alpha"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4761c3bc4d965b2a3568eaadbfc85eee3cbaa18ba81665f2f472004cb8bb34e9"
-dependencies = [
- "aws-smithy-async 0.30.0-alpha",
- "aws-smithy-types 0.30.0-alpha",
- "rustc_version",
- "tracing",
- "zeroize",
-]
-
-[[package]]
-name = "aws-types"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "15d31c4af87ae335c41a1ce7d6d699ef274551444e920e93afca3e008aee8f89"
 dependencies = [
- "aws-smithy-async 0.45.0",
- "aws-smithy-client 0.45.0",
- "aws-smithy-http 0.45.0",
- "aws-smithy-types 0.45.0",
+ "aws-smithy-async",
+ "aws-smithy-client",
+ "aws-smithy-http",
+ "aws-smithy-types",
  "http",
  "rustc_version",
  "tracing",
@@ -1560,26 +1385,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "thiserror"
-version = "1.0.30"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "854babe52e4df1653706b98fcfc05843010039b406875930a70e4d9644e5c417"
-dependencies = [
- "thiserror-impl",
-]
-
-[[package]]
-name = "thiserror-impl"
-version = "1.0.30"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa32fd3f627f367fe16f893e2597ae3c05020f8bba2666a4e6ea73d377e5714b"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "thread_local"
 version = "1.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1817,12 +1622,6 @@ name = "untrusted"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a156c684c91ea7d62626509bce3cb4e1d9ed5c4d978f7b4352658f96a4c26b4a"
-
-[[package]]
-name = "urlencoding"
-version = "1.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a1f0175e03a0973cf4afd476bef05c26e228520400eb1fd473ad417b1c00ffb"
 
 [[package]]
 name = "urlencoding"

@@ -33,8 +33,8 @@ async fn gen_messages(
         match sqs_client
             .receive_message()
             .queue_url(queue_url)
-            .attribute_names("SentTimestamp")
-            .attribute_names("ApproximateFirstReceiveTimestamp")
+            .attribute_names("SentTimestamp".into())
+            .attribute_names("ApproximateFirstReceiveTimestamp".into())
             .message_attribute_names("ALL")
             .max_number_of_messages(MAX_NUMBER_OF_MESSAGES.parse().unwrap())
             .visibility_timeout(VISIBILITY_TIMEOUT.parse().unwrap())
@@ -125,7 +125,7 @@ fn main() -> Result<()> {
                     sqs_client
                         .get_queue_attributes()
                         .queue_url(&queue_url)
-                        .attribute_names("QueueArn")
+                        .attribute_names("QueueArn".into())
                         .send()
                         .await
                 })
@@ -154,7 +154,7 @@ fn main() -> Result<()> {
                     sqs_client
                         .set_queue_attributes()
                         .queue_url(&queue_url)
-                        .attributes("Policy", policy_text)
+                        .attributes("Policy".into(), policy_text)
                         .send()
                         .await
                 })
