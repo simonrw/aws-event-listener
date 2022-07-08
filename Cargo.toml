@@ -10,9 +10,10 @@ color-eyre = "0.5.11"
 eyre = "0.6.5"
 structopt = "0.3.25"
 tracing = "0.1.29"
-aws-config = "0.0.26-alpha"
-aws-sdk-sqs = "0.0.26-alpha"
-aws-sdk-sns = "0.0.26-alpha"
+aws-config = "0.15.0"
+aws-sdk-sqs = "0.15.0"
+aws-sdk-sns = "0.15.0"
+aws-sdk-iam = "0.15.0"
 tokio = { version = "1.14.0", features = ["full"] }
 tracing-subscriber = { version = "0.3.3", features = ["env-filter"] }
 uuid = { version = "0.8.2", features = ["v4"] }
@@ -20,3 +21,4 @@ serde = { version = "1.0.130", features = ["derive"] }
 serde_json = "1.0.72"
 ctrlc = "3.2.1"
 colored_json = "2.1.0"
+aws-sdk-eventbridge = "0.15.0"
