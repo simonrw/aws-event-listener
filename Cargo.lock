@@ -129,29 +129,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "aws-sdk-iam"
-version = "0.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fde4db12b81bbcbba7a1d55ae0f8a30c4628413829851791658d4adf7f060897"
-dependencies = [
- "aws-endpoint",
- "aws-http",
- "aws-sig-auth",
- "aws-smithy-async",
- "aws-smithy-client",
- "aws-smithy-http",
- "aws-smithy-http-tower",
- "aws-smithy-query",
- "aws-smithy-types",
- "aws-smithy-xml",
- "aws-types",
- "bytes",
- "http",
- "tokio-stream",
- "tower",
-]
-
-[[package]]
 name = "aws-sdk-sns"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1302,7 +1279,6 @@ version = "0.1.0"
 dependencies = [
  "aws-config",
  "aws-sdk-eventbridge",
- "aws-sdk-iam",
  "aws-sdk-sns",
  "aws-sdk-sqs",
  "color-eyre",
