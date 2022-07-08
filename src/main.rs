@@ -245,7 +245,7 @@ fn handle_eventbridge(context: Context, source: Option<String>, bus: Option<Stri
 
     // create the eventbridge rule
     let rule_name = format!("sqslistener-rule-{}", id);
-    let rule = Rule::new(&rule_name, eventbridge_client.clone(), runtime.handle())?;
+    let rule = Rule::new(&rule_name, source, eventbridge_client.clone(), runtime.handle())?;
     let rule_arn = rule.arn()?;
     let target_id = format!("sqslistener-target-{}", id);
     let _target = crate::resources::Target::new(

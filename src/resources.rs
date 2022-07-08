@@ -19,6 +19,7 @@ impl<'h> Rule<'h> {
     #[tracing::instrument(skip(rule_name, client, handle))]
     pub(crate) fn new(
         rule_name: impl Into<String>,
+        source: Option<String>,
         client: aws_sdk_eventbridge::Client,
         handle: &'h Handle,
     ) -> Result<Self> {
@@ -26,7 +27,7 @@ impl<'h> Rule<'h> {
         tracing::debug!(?rule_name, "creating eventbridge rule");
 
         let pattern = serde_json::json!({
-            "source": ["foobar"],
+            "source": [source.unwrap()],
         });
 
         handle
