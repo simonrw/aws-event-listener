@@ -16,19 +16,19 @@ pub(crate) struct Rule<'h> {
 }
 
 impl<'h> Rule<'h> {
-    #[tracing::instrument(skip(rule_name, source, client, handle))]
+    #[tracing::instrument(skip(rule_name, client, handle))]
     pub(crate) fn new(
         rule_name: impl Into<String>,
-        source: impl Into<String>,
+        pattern: serde_json::Value,
         client: aws_sdk_eventbridge::Client,
         handle: &'h Handle,
     ) -> Result<Self> {
         let rule_name = rule_name.into();
         tracing::debug!(?rule_name, "creating eventbridge rule");
 
-        let pattern = serde_json::json!({
-            "source": [source.into()],
-        });
+        // let pattern = serde_json::json!({
+        //     "source": [source.into()],
+        // });
 
         handle
             .block_on(async {

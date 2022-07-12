@@ -16,7 +16,10 @@ use resources::Rule;
 enum Opts {
     EventBridge {
         #[structopt(short, long)]
-        source: String,
+        source: Option<String>,
+
+        #[structopt(short, long)]
+        pattern: Option<serde_json::Value>,
 
         #[structopt(short, long)]
         bus: Option<String>,
@@ -223,7 +226,12 @@ struct Context<'r> {
 }
 
 #[tracing::instrument(skip(context))]
-fn handle_eventbridge(context: Context, source: String, bus: Option<String>) -> Result<()> {
+fn handle_eventbridge(
+    context: Context,
+    source: Option<String>,
+    pattern: Option<serde_json::Value>,
+    bus: Option<String>,
+) -> Result<()> {
     let Context {
         runtime,
         sqs_client,
@@ -241,12 +249,26 @@ fn handle_eventbridge(context: Context, source: String, bus: Option<String>) -> 
 
     // create the eventbridge rule
     let rule_name = format!("sqslistener-rule-{}", id);
+    if source.is_none() && pattern.is_none() {
+        eyre::bail!("must specify either `source` or `pattern`");
+    }
+
+    let pattern = if let Some(source) = source {
+        serde_json::json!({
+            "source": [source],
+        })
+    } else {
+        pattern.unwrap()
+    };
+    tracing::debug!(%pattern, "adding rule pattern");
+
     let rule = Rule::new(
         &rule_name,
-        source,
+        pattern,
         eventbridge_client.clone(),
         runtime.handle(),
     )?;
+
     let rule_arn = rule.arn()?;
     let target_id = format!("sqslistener-target-{}", id);
     let _target = crate::resources::Target::new(
@@ -349,7 +371,11 @@ fn main() -> Result<()> {
     };
 
     match opts {
-        Opts::EventBridge { source, bus } => handle_eventbridge(context.clone(), source, bus),
+        Opts::EventBridge {
+            source,
+            pattern,
+            bus,
+        } => handle_eventbridge(context.clone(), source, pattern, bus),
         Opts::Sns { topic, prefix } => handle_sns(context.clone(), topic, prefix),
     }
 }
