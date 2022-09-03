@@ -13,7 +13,16 @@ use resources::Queue;
 use resources::Rule;
 
 #[derive(StructOpt)]
-enum Opts {
+struct Opts {
+    #[structopt(long)]
+    endpoint_url: Option<String>,
+
+    #[structopt(subcommand)]
+    mode: Mode,
+}
+
+#[derive(StructOpt)]
+enum Mode {
     EventBridge {
         #[structopt(short, long)]
         source: Option<String>,
@@ -347,6 +356,46 @@ fn subscribe_to_messages(context: Context<'_>, queue_url: String) -> Result<()> 
 
     Ok(())
 }
+
+async fn load_sqs_config(endpoint_url: &Option<String>) -> aws_types::SdkConfig {
+    if let Some(url) = endpoint_url {
+        aws_config::from_env()
+            .endpoint_resolver(aws_sdk_sqs::Endpoint::immutable(
+                url.parse().expect("invalid URI"),
+            ))
+            .load()
+            .await
+    } else {
+        aws_config::load_from_env().await
+    }
+}
+
+async fn load_sns_config(endpoint_url: &Option<String>) -> aws_types::SdkConfig {
+    if let Some(url) = endpoint_url {
+        aws_config::from_env()
+            .endpoint_resolver(aws_sdk_sns::Endpoint::immutable(
+                url.parse().expect("invalid URI"),
+            ))
+            .load()
+            .await
+    } else {
+        aws_config::load_from_env().await
+    }
+}
+
+async fn load_eventbridge_config(endpoint_url: &Option<String>) -> aws_types::SdkConfig {
+    if let Some(url) = endpoint_url {
+        aws_config::from_env()
+            .endpoint_resolver(aws_sdk_eventbridge::Endpoint::immutable(
+                url.parse().expect("invalid URI"),
+            ))
+            .load()
+            .await
+    } else {
+        aws_config::load_from_env().await
+    }
+}
+
 fn main() -> Result<()> {
     color_eyre::install()?;
     tracing_subscriber::fmt::init();
@@ -358,10 +407,18 @@ fn main() -> Result<()> {
         .build()
         .unwrap();
 
-    let config = runtime.block_on(aws_config::load_from_env());
-    let sqs_client = aws_sdk_sqs::Client::new(&config);
-    let sns_client = aws_sdk_sns::Client::new(&config);
-    let eventbridge_client = aws_sdk_eventbridge::Client::new(&config);
+    let sqs_client = {
+        let config = runtime.block_on(load_sqs_config(&opts.endpoint_url));
+        aws_sdk_sqs::Client::new(&config)
+    };
+    let sns_client = {
+        let config = runtime.block_on(load_sns_config(&opts.endpoint_url));
+        aws_sdk_sns::Client::new(&config)
+    };
+    let eventbridge_client = {
+        let config = runtime.block_on(load_eventbridge_config(&opts.endpoint_url));
+        aws_sdk_eventbridge::Client::new(&config)
+    };
 
     let context = Context {
         runtime: &runtime,
@@ -370,12 +427,12 @@ fn main() -> Result<()> {
         eventbridge_client,
     };
 
-    match opts {
-        Opts::EventBridge {
+    match opts.mode {
+        Mode::EventBridge {
             source,
             pattern,
             bus,
         } => handle_eventbridge(context.clone(), source, pattern, bus),
-        Opts::Sns { topic, prefix } => handle_sns(context.clone(), topic, prefix),
+        Mode::Sns { topic, prefix } => handle_sns(context.clone(), topic, prefix),
     }
 }
