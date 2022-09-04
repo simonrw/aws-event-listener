@@ -106,7 +106,7 @@ struct EventBridgeMessage {
     detail_type: String,
 }
 
-fn print_message(message: aws_sdk_sqs::model::Message) -> Result<()> {
+fn print_message(message: aws_sdk_sqs::model::Message) -> Result<bool> {
     if let Some(body) = message.body {
         let payload: Payload = serde_json::from_str(&body).wrap_err("decoding JSON message")?;
         match payload {
@@ -137,7 +137,7 @@ fn print_message(message: aws_sdk_sqs::model::Message) -> Result<()> {
             }
         }
     }
-    Ok(())
+    Ok(false)
 }
 
 fn handle_sns<F>(
@@ -147,7 +147,7 @@ fn handle_sns<F>(
     on_message: F,
 ) -> Result<()>
 where
-    F: FnOnce(aws_sdk_sqs::model::Message) -> Result<()> + Copy,
+    F: FnOnce(aws_sdk_sqs::model::Message) -> Result<bool> + Clone,
 {
     let Context {
         runtime,
@@ -251,7 +251,7 @@ fn handle_eventbridge<F>(
     on_message: F,
 ) -> Result<()>
 where
-    F: FnOnce(aws_sdk_sqs::model::Message) -> Result<()> + Copy,
+    F: FnOnce(aws_sdk_sqs::model::Message) -> Result<bool> + Clone,
 {
     let Context {
         runtime,
@@ -331,7 +331,7 @@ where
 
 fn subscribe_to_messages<F>(context: Context<'_>, queue_url: String, callback: F) -> Result<()>
 where
-    F: FnOnce(aws_sdk_sqs::model::Message) -> Result<()> + Copy,
+    F: FnOnce(aws_sdk_sqs::model::Message) -> Result<bool> + Clone,
 {
     let Context {
         runtime,
@@ -356,8 +356,10 @@ where
             tokio::select! {
                 message = messages_rx.recv() => {
                     if let Some(message) = message {
-                        if let Err(e) = callback(message) {
-                            tracing::warn!(error = ?e, "error printing message");
+                        match (callback.clone())(message) {
+                            Ok(true) => break,
+                            Ok(false) => {},
+                            Err(e) => tracing::warn!(error=?e, "error in message handler"),
                         }
                     }
                 }
@@ -449,5 +451,92 @@ fn main() -> Result<()> {
             bus,
         } => handle_eventbridge(context.clone(), source, pattern, bus, print_message),
         Mode::Sns { topic, prefix } => handle_sns(context.clone(), topic, prefix, print_message),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use tokio::runtime::Runtime;
+
+    use super::*;
+    #[cfg(feature = "integration_test_support")]
+    use crate::resources::integration_test_support::Topic;
+
+    #[test]
+    #[cfg(feature = "integration")]
+    fn integration() {
+        use std::{
+            sync::{atomic::Ordering, Arc},
+            thread,
+        };
+
+        // assume a localstack instance is running
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+
+        let context = local_context(&runtime);
+        let topic = crate::resources::integration_test_support::Topic::new(
+            "topic",
+            context.sns_client.clone(),
+            runtime.handle(),
+        )
+        .unwrap();
+
+        let got_message = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let cb_flag = Arc::clone(&got_message);
+        let callback = move |_| {
+            println!("got message");
+            cb_flag.store(true, Ordering::SeqCst);
+            println!("shutting down listener");
+            Ok(true)
+        };
+
+        thread::scope(|s| {
+            s.spawn(|| {
+                handle_sns(context.clone(), topic.arn.clone(), None, callback).unwrap();
+            });
+
+            thread::sleep(Duration::from_secs(1));
+            println!("sending sns message");
+
+            // wait for the resources to be created
+            runtime.block_on(async {
+                context
+                    .sns_client
+                    .publish()
+                    .topic_arn(topic.arn.clone())
+                    .message(r#"{"message": "hello world"}"#)
+                    .send()
+                    .await
+                    .unwrap();
+            });
+        });
+
+        assert!(got_message.load(Ordering::SeqCst));
+    }
+
+    fn local_context(runtime: &Runtime) -> Context<'_> {
+        let endpoint_url = Some("http://localhost:4566".to_string());
+        let sqs_client = {
+            let config = runtime.block_on(load_sqs_config(&endpoint_url));
+            aws_sdk_sqs::Client::new(&config)
+        };
+        let sns_client = {
+            let config = runtime.block_on(load_sns_config(&endpoint_url));
+            aws_sdk_sns::Client::new(&config)
+        };
+        let eventbridge_client = {
+            let config = runtime.block_on(load_eventbridge_config(&endpoint_url));
+            aws_sdk_eventbridge::Client::new(&config)
+        };
+
+        Context {
+            runtime,
+            sqs_client,
+            sns_client,
+            eventbridge_client,
+        }
     }
 }

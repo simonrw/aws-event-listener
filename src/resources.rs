@@ -221,3 +221,51 @@ impl<'h> Drop for Queue<'h> {
         });
     }
 }
+
+#[cfg(test)]
+#[cfg(feature = "integration")]
+pub(crate) mod integration_test_support {
+    use eyre::{Result, WrapErr};
+    use tokio::runtime::Handle;
+
+    pub(crate) struct Topic<'h> {
+        client: aws_sdk_sns::Client,
+        handle: &'h Handle,
+        pub(crate) arn: String,
+    }
+
+    impl<'h> Topic<'h> {
+        #[tracing::instrument(skip(name, client, handle))]
+        pub(crate) fn new(
+            name: impl AsRef<str>,
+            client: aws_sdk_sns::Client,
+            handle: &'h Handle,
+        ) -> Result<Self> {
+            let name = name.as_ref();
+            let topic_info = handle
+                .block_on(async { client.create_topic().name(name).send().await })
+                .wrap_err("creating queue")?;
+            let arn = topic_info.topic_arn().unwrap();
+
+            Ok(Self {
+                client,
+                handle,
+                arn: arn.to_string(),
+            })
+        }
+    }
+
+    impl<'h> Drop for Topic<'h> {
+        #[tracing::instrument(skip(self))]
+        fn drop(&mut self) {
+            tracing::debug!("dropping topic");
+            let _ = self.handle.block_on(async {
+                if let Err(e) = self.client.delete_topic().topic_arn(&self.arn).send().await {
+                    eyre::bail!("could not clean up topic: {:?}", e);
+                }
+
+                Ok(())
+            });
+        }
+    }
+}
