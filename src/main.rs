@@ -140,7 +140,15 @@ fn print_message(message: aws_sdk_sqs::model::Message) -> Result<()> {
     Ok(())
 }
 
-fn handle_sns(context: Context, topic: String, prefix: Option<Vec<String>>) -> Result<()> {
+fn handle_sns<F>(
+    context: Context,
+    topic: String,
+    prefix: Option<Vec<String>>,
+    on_message: F,
+) -> Result<()>
+where
+    F: FnOnce(aws_sdk_sqs::model::Message) -> Result<()> + Copy,
+{
     let Context {
         runtime,
         sqs_client,
@@ -223,7 +231,7 @@ fn handle_sns(context: Context, topic: String, prefix: Option<Vec<String>>) -> R
         }
     }
 
-    subscribe_to_messages(context, queue_url)
+    subscribe_to_messages(context, queue_url, on_message)
 }
 
 #[derive(Clone)]
@@ -234,13 +242,17 @@ struct Context<'r> {
     eventbridge_client: aws_sdk_eventbridge::Client,
 }
 
-#[tracing::instrument(skip(context))]
-fn handle_eventbridge(
+#[tracing::instrument(skip(context, on_message))]
+fn handle_eventbridge<F>(
     context: Context,
     source: Option<String>,
     pattern: Option<serde_json::Value>,
     bus: Option<String>,
-) -> Result<()> {
+    on_message: F,
+) -> Result<()>
+where
+    F: FnOnce(aws_sdk_sqs::model::Message) -> Result<()> + Copy,
+{
     let Context {
         runtime,
         sqs_client,
@@ -314,10 +326,13 @@ fn handle_eventbridge(
         })
         .wrap_err("setting queue attributes")?;
 
-    subscribe_to_messages(context, queue_url)
+    subscribe_to_messages(context, queue_url, on_message)
 }
 
-fn subscribe_to_messages(context: Context<'_>, queue_url: String) -> Result<()> {
+fn subscribe_to_messages<F>(context: Context<'_>, queue_url: String, callback: F) -> Result<()>
+where
+    F: FnOnce(aws_sdk_sqs::model::Message) -> Result<()> + Copy,
+{
     let Context {
         runtime,
         sqs_client,
@@ -341,7 +356,7 @@ fn subscribe_to_messages(context: Context<'_>, queue_url: String) -> Result<()> 
             tokio::select! {
                 message = messages_rx.recv() => {
                     if let Some(message) = message {
-                        if let Err(e) = print_message(message) {
+                        if let Err(e) = callback(message) {
                             tracing::warn!(error = ?e, "error printing message");
                         }
                     }
@@ -432,7 +447,7 @@ fn main() -> Result<()> {
             source,
             pattern,
             bus,
-        } => handle_eventbridge(context.clone(), source, pattern, bus),
-        Mode::Sns { topic, prefix } => handle_sns(context.clone(), topic, prefix),
+        } => handle_eventbridge(context.clone(), source, pattern, bus, print_message),
+        Mode::Sns { topic, prefix } => handle_sns(context.clone(), topic, prefix, print_message),
     }
 }
