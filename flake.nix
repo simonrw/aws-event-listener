@@ -44,7 +44,7 @@
           # cargoTarpaulinExtraArgs = "--features integration --skip-clean --out Xml --output-dir $out";
         });
       in
-      {
+      rec {
         packages.default = snslistener;
         checks =
           if system == "x86_64-linux" then {
@@ -52,6 +52,11 @@
           } else {
             inherit snslistener clippy;
           };
+
+        devShells.default = pkgs.mkShell {
+          nativeBuildInputs = packages.default.nativeBuildInputs;
+          RUST_SRC_PATH = "${pkgs.rustPlatform.rustLibSrc}";
+        };
       }
     );
 }
