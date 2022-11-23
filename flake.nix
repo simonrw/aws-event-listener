@@ -41,7 +41,7 @@
 
         coverage = craneLib.cargoTarpaulin (commonArgs // {
           inherit cargoArtifacts;
-          cargoTarpaulinExtraArgs = "--features integration --skip-clean --out Xml --output-dir $out";
+          # cargoTarpaulinExtraArgs = "--features integration --skip-clean --out Xml --output-dir $out";
         });
       in
       {
