@@ -517,6 +517,12 @@ mod tests {
         assert!(got_message.load(Ordering::SeqCst));
     }
 
+    #[test]
+    fn simple() {
+        assert_eq!(1, 1);
+    }
+
+    #[allow(dead_code)]
     fn local_context(runtime: &Runtime) -> Context<'_> {
         let endpoint_url = Some("http://localhost:4566".to_string());
         let sqs_client = {

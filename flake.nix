@@ -14,15 +14,45 @@
         pkgs = (import nixpkgs) {
           inherit system;
         };
-      in
-      {
-        packages.default = craneLib.buildPackage {
+
+        commonArgs = {
           src = craneLib.cleanCargoSource ./.;
           nativeBuildInputs = [
+            pkgs.rustc
+            pkgs.cargo
             pkgs.libiconv
           ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
             pkgs.darwin.apple_sdk.frameworks.Cocoa
           ];
+        };
+
+        cargoArtifacts = craneLib.buildDepsOnly (commonArgs // {
+          pname = "snslistener-deps";
+        });
+
+        clippy = craneLib.cargoClippy (commonArgs // {
+          inherit cargoArtifacts;
+          cargoClippyExtraArgs = "--all-targets -- --deny warnings";
+        });
+
+        snslistener = craneLib.buildPackage (commonArgs // {
+          inherit cargoArtifacts;
+        });
+
+        coverage = craneLib.cargoTarpaulin (commonArgs // {
+          inherit cargoArtifacts;
+          # cargoTarpaulinExtraArgs = "--features integration --skip-clean --out Xml --output-dir $out";
+        });
+      in
+      rec {
+        packages.default = snslistener;
+        checks = {
+          inherit snslistener clippy;
+        };
+
+        devShells.default = pkgs.mkShell {
+          nativeBuildInputs = packages.default.nativeBuildInputs;
+          RUST_SRC_PATH = "${pkgs.rustPlatform.rustLibSrc}";
         };
       }
     );
