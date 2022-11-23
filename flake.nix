@@ -14,16 +14,44 @@
         pkgs = (import nixpkgs) {
           inherit system;
         };
-      in
-      {
-        packages.default = craneLib.buildPackage {
+
+        commonArgs = {
           src = craneLib.cleanCargoSource ./.;
           nativeBuildInputs = [
+            pkgs.rustc
+            pkgs.cargo
             pkgs.libiconv
           ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
             pkgs.darwin.apple_sdk.frameworks.Cocoa
           ];
         };
+
+        cargoArtifacts = craneLib.buildDepsOnly (commonArgs // {
+          pname = "snslistener-deps";
+        });
+
+        clippy = craneLib.cargoClippy (commonArgs // {
+          inherit cargoArtifacts;
+          cargoClippyExtraArgs = "--all-targets -- --deny warnings";
+        });
+
+        snslistener = craneLib.buildPackage (commonArgs // {
+          inherit cargoArtifacts;
+        });
+
+        coverage = craneLib.cargoTarpaulin (commonArgs // {
+          inherit cargoArtifacts;
+          cargoTarpaulinExtraArgs = "--features integration --skip-clean --out Xml --output-dir $out";
+        });
+      in
+      {
+        packages.default = snslistener;
+        checks =
+          if system == "x86_64-linux" then {
+            inherit snslistener clippy coverage;
+          } else {
+            inherit snslistener clippy;
+          };
       }
     );
 }
