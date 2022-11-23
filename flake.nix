@@ -46,12 +46,9 @@
       in
       rec {
         packages.default = snslistener;
-        checks =
-          if system == "x86_64-linux" then {
-            inherit snslistener clippy coverage;
-          } else {
-            inherit snslistener clippy;
-          };
+        checks = {
+          inherit snslistener clippy;
+        };
 
         devShells.default = pkgs.mkShell {
           nativeBuildInputs = packages.default.nativeBuildInputs;
