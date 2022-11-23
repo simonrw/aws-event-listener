@@ -265,6 +265,10 @@ fn handle_sqs(context: Context, queue_url: String, no_delete_on_receive: bool) -
         print_message,
         |message: aws_sdk_sqs::model::Message| {
             Box::pin(async move {
+                if no_delete_on_receive {
+                    return Ok(());
+                }
+
                 // delete the message from the queue
                 let receipt_handle = message.receipt_handle.unwrap();
                 sqs_client
