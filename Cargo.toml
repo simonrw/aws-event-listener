@@ -22,6 +22,7 @@ ctrlc = "3.2.1"
 colored_json = "2.1.0"
 aws-sdk-eventbridge = "0.18.0"
 aws-types = "0.48.0"
+futures = "0.3.25"
 
 [features]
 integration = []

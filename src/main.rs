@@ -1,4 +1,5 @@
 use eyre::{Result, WrapErr};
+use futures::future::BoxFuture;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;
@@ -39,6 +40,13 @@ enum Mode {
 
         #[structopt(short, long)]
         prefix: Option<Vec<String>>,
+    },
+    Sqs {
+        #[structopt(short, long)]
+        queue_url: String,
+
+        #[structopt(short, long)]
+        no_delete_on_receive: bool,
     },
 }
 
@@ -94,6 +102,7 @@ enum Payload {
         attributes: Option<HashMap<String, Attribute>>,
     },
     EventBridgeMessage(EventBridgeMessage),
+    RawMessage(serde_json::Value),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -134,6 +143,9 @@ fn print_message(message: aws_sdk_sqs::model::Message) -> Result<bool> {
             Payload::EventBridgeMessage(ref message) => {
                 let value = serde_json::to_value(message).unwrap();
                 println!("{}\n", colored_json::to_colored_json_auto(&value).unwrap());
+            }
+            Payload::RawMessage(ref raw) => {
+                println!("{}\n", colored_json::to_colored_json_auto(raw).unwrap());
             }
         }
     }
@@ -242,6 +254,34 @@ struct Context<'r> {
     eventbridge_client: aws_sdk_eventbridge::Client,
 }
 
+#[tracing::instrument(skip(context))]
+fn handle_sqs(context: Context, queue_url: String, no_delete_on_receive: bool) -> Result<()> {
+    // just directly handle the subscription
+    let sqs_client = context.sqs_client.clone();
+
+    subscribe_to_messages_with_cleanup(
+        context,
+        queue_url.clone(),
+        print_message,
+        |message: aws_sdk_sqs::model::Message| {
+            Box::pin(async move {
+                // delete the message from the queue
+                let receipt_handle = message.receipt_handle.unwrap();
+                sqs_client
+                    .delete_message()
+                    .queue_url(&queue_url)
+                    .receipt_handle(&receipt_handle)
+                    .send()
+                    .await
+                    .wrap_err("deleting message")?;
+                Ok(())
+            })
+        },
+    )
+    .wrap_err("subscribing to messages")?;
+    Ok(())
+}
+
 #[tracing::instrument(skip(context, on_message))]
 fn handle_eventbridge<F>(
     context: Context,
@@ -329,6 +369,60 @@ where
     subscribe_to_messages(context, queue_url, on_message)
 }
 
+fn subscribe_to_messages_with_cleanup<F, C>(
+    context: Context<'_>,
+    queue_url: String,
+    callback: F,
+    cleanup: C,
+) -> Result<()>
+where
+    F: FnOnce(aws_sdk_sqs::model::Message) -> Result<bool> + Clone,
+    C: FnOnce(aws_sdk_sqs::model::Message) -> BoxFuture<'static, Result<()>> + Clone,
+{
+    let Context {
+        runtime,
+        sqs_client,
+        ..
+    } = context;
+    let (tx, mut messages_rx) = mpsc::channel(16);
+    let message_subscriber = runtime.spawn(async move {
+        tracing::trace!("spawned background task");
+        gen_messages(&sqs_client, &queue_url, tx).await.unwrap();
+    });
+
+    let (tx, mut ctrlc_rx) = mpsc::channel(1);
+    ctrlc::set_handler(move || {
+        let _ = tx.blocking_send(());
+    })
+    .wrap_err("setting ctrl-c handler")?;
+
+    println!("Listening for messages...");
+    runtime.block_on(async {
+        loop {
+            tokio::select! {
+                message = messages_rx.recv() => {
+                    if let Some(message) = message {
+                        let should_break = (callback.clone())(message.clone());
+                        (cleanup.clone())(message).await.unwrap();
+                        match should_break {
+                            Ok(true) => break,
+                            Ok(false) => {},
+                            Err(e) => tracing::warn!(error=?e, "error in message handler"),
+                        }
+                    }
+                }
+                _ = ctrlc_rx.recv() => {
+                    message_subscriber.abort();
+                    break
+                }
+            }
+        }
+    });
+
+    Ok(())
+}
+
+// Return value indicates whether we should break out of the loop or not.
 fn subscribe_to_messages<F>(context: Context<'_>, queue_url: String, callback: F) -> Result<()>
 where
     F: FnOnce(aws_sdk_sqs::model::Message) -> Result<bool> + Clone,
@@ -451,6 +545,10 @@ fn main() -> Result<()> {
             bus,
         } => handle_eventbridge(context.clone(), source, pattern, bus, print_message),
         Mode::Sns { topic, prefix } => handle_sns(context.clone(), topic, prefix, print_message),
+        Mode::Sqs {
+            queue_url,
+            no_delete_on_receive,
+        } => handle_sqs(context.clone(), queue_url, no_delete_on_receive),
     }
 }
 
