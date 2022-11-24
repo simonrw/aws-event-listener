@@ -95,14 +95,14 @@ struct Attribute {
 #[derive(Deserialize, Debug)]
 #[serde(untagged)]
 enum Payload {
-    SnsMessage {
+    Sns {
         #[serde(rename = "Message")]
         message: String,
         #[serde(rename = "MessageAttributes")]
         attributes: Option<HashMap<String, Attribute>>,
     },
-    EventBridgeMessage(EventBridgeMessage),
-    RawMessage(serde_json::Value),
+    EventBridge(EventBridgeMessage),
+    Raw(serde_json::Value),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -119,7 +119,7 @@ fn print_message(message: aws_sdk_sqs::model::Message) -> Result<bool> {
     if let Some(body) = message.body {
         let payload: Payload = serde_json::from_str(&body).wrap_err("decoding JSON message")?;
         match payload {
-            Payload::SnsMessage {
+            Payload::Sns {
                 message,
                 attributes,
             } => {
@@ -140,11 +140,11 @@ fn print_message(message: aws_sdk_sqs::model::Message) -> Result<bool> {
                 // unwrap is safe because the object was JSON to start with
                 println!("{}\n", colored_json::to_colored_json_auto(&data).unwrap());
             }
-            Payload::EventBridgeMessage(ref message) => {
+            Payload::EventBridge(ref message) => {
                 let value = serde_json::to_value(message).unwrap();
                 println!("{}\n", colored_json::to_colored_json_auto(&value).unwrap());
             }
-            Payload::RawMessage(ref raw) => {
+            Payload::Raw(ref raw) => {
                 println!("{}\n", colored_json::to_colored_json_auto(raw).unwrap());
             }
         }
