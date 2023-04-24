@@ -16,3 +16,5 @@ jobs:
           name: snslistener
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
       - run: nix flake check
+      - run: nix build
+      - run: ./result/bin/aws-event-listener -h
