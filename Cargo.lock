@@ -95,6 +95,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "aws-event-listener"
+version = "0.1.1"
+dependencies = [
+ "aws-config",
+ "aws-sdk-eventbridge",
+ "aws-sdk-sns",
+ "aws-sdk-sqs",
+ "aws-types",
+ "color-eyre",
+ "colored_json",
+ "ctrlc",
+ "eyre",
+ "futures",
+ "serde",
+ "serde_json",
+ "structopt",
+ "tokio",
+ "tracing",
+ "tracing-subscriber 0.3.3",
+ "uuid",
+]
+
+[[package]]
 name = "aws-http"
 version = "0.48.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1258,29 +1281,6 @@ name = "smallvec"
 version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ecab6c735a6bb4139c0caafd0cc3635748bbb3acf4550e8138122099251f309"
-
-[[package]]
-name = "snslistener"
-version = "0.1.0"
-dependencies = [
- "aws-config",
- "aws-sdk-eventbridge",
- "aws-sdk-sns",
- "aws-sdk-sqs",
- "aws-types",
- "color-eyre",
- "colored_json",
- "ctrlc",
- "eyre",
- "futures",
- "serde",
- "serde_json",
- "structopt",
- "tokio",
- "tracing",
- "tracing-subscriber 0.3.3",
- "uuid",
-]
 
 [[package]]
 name = "socket2"

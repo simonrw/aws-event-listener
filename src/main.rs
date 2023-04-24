@@ -168,7 +168,7 @@ where
         ..
     } = &context;
 
-    let queue_name = format!("snslistener-{}", uuid::Uuid::new_v4());
+    let queue_name = format!("aws-event-listener-{}", uuid::Uuid::new_v4());
     tracing::info!(%queue_name, "creating queue");
 
     let queue = Queue::new(&queue_name, sqs_client.clone(), runtime.handle())?;
@@ -305,7 +305,7 @@ where
     } = &context;
 
     let id = uuid::Uuid::new_v4();
-    let queue_name = format!("snslistener-{}", id);
+    let queue_name = format!("aws-event-listener-{}", id);
     tracing::info!(%queue_name, "creating queue");
 
     let queue = Queue::new(&queue_name, sqs_client.clone(), runtime.handle())?;
