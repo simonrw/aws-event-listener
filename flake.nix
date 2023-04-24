@@ -27,7 +27,7 @@
         };
 
         cargoArtifacts = craneLib.buildDepsOnly (commonArgs // {
-          pname = "snslistener-deps";
+          pname = "aws-event-listener-deps";
         });
 
         clippy = craneLib.cargoClippy (commonArgs // {
@@ -35,7 +35,7 @@
           cargoClippyExtraArgs = "--all-targets -- --deny warnings";
         });
 
-        snslistener = craneLib.buildPackage (commonArgs // {
+        aws-event-listener = craneLib.buildPackage (commonArgs // {
           inherit cargoArtifacts;
         });
 
@@ -45,9 +45,9 @@
         });
       in
       rec {
-        packages.default = snslistener;
+        packages.default = aws-event-listener;
         checks = {
-          inherit snslistener clippy;
+          inherit aws-event-listener clippy;
         };
 
         devShells.default = pkgs.mkShell {
